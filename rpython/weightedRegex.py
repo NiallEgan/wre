@@ -15,15 +15,15 @@ class Expr(object):
 class Sym(Expr):
     """ A literal symbol in the regex """
 
-    def __init__(self, weightFunction, rig):
-        super(Sym, self).__init__(rig)
+    def __init__(self, weightFunction, rig, tag=""):
+        Expr.__init__(self, rig)
         self.weightFunction = weightFunction  # A function from the alphabet to the rig
         self.mark = self._rig.zero
         self._empty = self._rig.zero
+        self.tag = tag
 
     def shift(self, mark, symbol):
-        self.mark = self._rig.mult(mark, self.weightFunction(symbol))
-        return self
+        self.mark = self._rig.mult(mark, self.weightFunction.call(symbol))
 
     def empty(self):
         return self._empty  # This value will never change
@@ -31,11 +31,14 @@ class Sym(Expr):
     def updateFinal(self):
         self._final = self.mark
 
+    def copy(self):
+        return Sym(self.weightFunction, self._rig, self.tag)
+
 class Eps(Expr):
     """ A null string in the regex """
 
     def __init__(self, rig):
-        super(Eps, self).__init__(rig)
+        Expr.__init__(self, rig)
         self._empty = self._rig.one
 
     def shift(self, mark, symbol):
@@ -47,12 +50,15 @@ class Eps(Expr):
     def updateFinal(self):
         pass  # value never changes
 
+    def copy(self):
+        return Eps(self._rig)
+
 
 class Rep(Expr):
     """ Repetiton: exp repeated zero or more times """
 
     def __init__(self, exp, rig):
-        super(Rep, self).__init__(rig)
+        Expr.__init__(self, rig)
         self.exp = exp
         self._empty = self._rig.one
 
@@ -66,31 +72,35 @@ class Rep(Expr):
         self.exp.updateFinal()
         self._final = self.exp.final()
 
+    def copy(self):
+        return Rep(self.exp.copy(), self._rig)
+
 class Plus(Expr):
     """ exp repeated one or more times """
 
     def __init__(self, exp, rig):
-        super(Plus, self).__init__(rig)
+        Expr.__init__(self, rig)
         self.exp = exp
-        self._empty = None
+        self._empty = self.exp.empty()
 
     def shift(self, mark, symbol):
         self.exp.shift(self._rig.plus(mark, self._final), symbol)
 
     def empty(self):
-        if self._empty is None:
-            self._empty = self.exp.empty()
         return self._empty
 
     def updateFinal(self):
         self.exp.updateFinal()
         self._final = self.exp.final()
 
+    def copy(self):
+        return Plus(self.exp.copy(), self._rig)
+
 class Question(Expr):
     """ exp 1 or 0 times """
 
     def __init__(self, exp, rig):
-        super(Question, self).__init__(rig)
+        Expr.__init__(self, rig)
         self.exp = exp
         self._empty = self._rig.one
 
@@ -104,31 +114,32 @@ class Question(Expr):
         self.exp.updateFinal()
         self._final = self.exp.final()
 
+    def copy(self):
+        return Question(self.exp.copy(), self._rig)
+
 class Branch(Expr):
     """ A superclass for binary operators """
 
     def __init__(self, left, right, rig):
-        super(Branch, self).__init__(rig)
+        Expr.__init__(self, rig)
         self.left = left
         self.right = right
-        self._empty = None
 
 class Seq(Branch):
     """ Concatanation: match left and right """
 
     def __init__(self, left, right, rig):
-        super(Seq, self).__init__(left, right, rig)
+        Branch.__init__(self, left, right, rig)
+        self._empty = self._rig.mult(self.left.empty(), self.right.empty())
 
     def shift(self, mark, symbol):
+    #    print(symbol)
         self.left.shift(mark, symbol)
         self.right.shift(self._rig.plus(
                          self._rig.mult(mark, self.left.empty()),
                          self.left.final()), symbol)
 
     def empty(self):
-        if self._empty is None:  # This needs only be computed once,
-            # cache for later use
-            self._empty = self._rig.mult(self.left.empty(), self.right.empty())
         return self._empty
 
     def updateFinal(self):
@@ -137,19 +148,21 @@ class Seq(Branch):
         self._final = self._rig.plus(self._rig.mult(self.left.final(), self.right.empty()),
                                      self.right.final())
 
+    def copy(self):
+        return Seq(self.left.copy(), self.right.copy(), self._rig)
+
 class Alt(Branch):
     """ Alternation: match left or right """
 
     def __init__(self, left, right, rig):
-        super(Alt, self).__init__(left, right, rig)
+        Branch.__init__(self, left, right, rig)
+        self._empty = self._rig.plus(self.left.empty(), self.right.empty())
 
     def shift(self, mark, symbol):
         self.left.shift(mark, symbol)
         self.right.shift(mark, symbol)
 
     def empty(self):
-        if self._empty is None:
-            self._empty = self._rig.plus(self.left.empty(), self.right.empty())
         return self._empty
 
     def updateFinal(self):
@@ -157,23 +170,5 @@ class Alt(Branch):
         self.right.updateFinal()
         self._final = self._rig.plus(self.left.final(), self.right.final())
 
-def match(r, string, rig):
-    """ Returns if string matches the regex r """
-
-    if string == "":
-        return r.empty()
-
-    r.shift(rig.one, string[0])  # Want to shift in an initial mark to start the
-    # NFA
-
-    for c in string[1:]:
-        r.updateFinal()  # Explicitly call update here, cache the values
-        r.shift(rig.zero, c)
-
-    r.updateFinal()
-    return r.final()
-
-
-if __name__ == '__main__':
-    r = post2ExprTree(regexToPost("(a.(b.b)*.a)|a.b.c"))
-    print(match(r, "abc"))
+    def copy(self):
+        return Alt(self.left.copy(), self.right.copy(), self._rig)
