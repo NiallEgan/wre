@@ -3,6 +3,9 @@
 
 class WeightFunctionBase(object):
     """ Abstract base class """
+
+    _imutable_fields_ = ["rig"]
+
     def __init__(self, rig):
         self.rig = rig
 
@@ -10,6 +13,8 @@ class WeightFunctionBase(object):
         return self.rig.zero
 
 class SingleSymbolMatch(WeightFunctionBase):
+    _imutable_fields_ = ["sym"]
+
     def __init__(self, sym, rig):
         WeightFunctionBase.__init__(self, rig)
         self.sym = sym
@@ -27,6 +32,9 @@ class SymbolClassMatch(WeightFunctionBase):
     #  WARNING: Inverting a characterClass will not always lead
     #  to the expected results for none boolean rigs
     # TODO: Should really implement proper checking for this..., test with int rig
+
+    _imutable_fields_ = ["symMatchClass"]
+
     def __init__(self, symMatchClass, rig):
         """symMatchClass: a list of weight function objects """
         WeightFunctionBase.__init__(self, rig)
@@ -36,11 +44,12 @@ class SymbolClassMatch(WeightFunctionBase):
     def call(self, sym):
         s = self.rig.zero
         for f in self.symclass:
-            assert isinstance(f.call(sym), bool)
             s = self.rig.plus(s, f.call(sym))
         return s
 
 class CaseInsensitiveWrapper(WeightFunctionBase):
+    _imutable_fields_ = ["base"]
+
     def __init__(self, base, rig):
         WeightFunctionBase.__init__(self, rig)
         self.base = base
@@ -49,6 +58,8 @@ class CaseInsensitiveWrapper(WeightFunctionBase):
         return self.base.call(ord(chr(sym).lower()))
 
 class InvertWrapper(WeightFunctionBase):
+    _imutable_fields_ = ["base"]
+
     def __init__(self, base, rig):
         WeightFunctionBase.__init__(self, rig)
         self.base = base

@@ -1,45 +1,55 @@
 import os
 import sys
-from parser import compileRegex
+from parser import compileRegex, ReSyntaxError, compilePartial
 from weightFunctions import createSingleSymbolMatch
-from rigs import BoolRig
+from rigs import BoolRig, BitRig
+from rpython.rlib.jit import JitDriver
 
-def run(fp):
+jitdriver = JitDriver(reds=["i", "string", "rig"], greens=["r"])
+
+def readFile(filename):
+    fp = os.open(filename, os.O_RDONLY, 0777)
     f = ""
     while True:
         read = os.read(fp, 4096)
         if len(read) == 0:
             break
         f += read
-        os.close(fp)
-    # TODO: Create a rig syntax in the file...
-    string = []
-    regExp = ""
-    addToString = True
-    for char in f:
-        if char == "\n":
-            addToString = False
-        elif addToString:
-            string.append(ord(char))
-        else:
-            regExp += char
-    ast = compileRegex(regExp, BoolRig(), createSingleSymbolMatch)
+    os.close(fp)
+    return f
 
-    mainloop(ast, string, BoolRig())
+def run(re, s):
+
+    # TODO: Create a rig syntax in the file...
+    string = [ord(c) for c in s]
+    try:
+        ast = compilePartial(re, BitRig(), createSingleSymbolMatch)
+        return mainloop(ast, string, BitRig())
+    except ReSyntaxError:
+        print("Syntax Error caught")
+        return 0
 
 
 def entry_point(argv):
     try:
-        filename = argv[1]
+        re = argv[1]
+        s = readFile(argv[2])
     except IndexError:
         print("No file name supplied")
         return 1
 
-    run(os.open(filename, os.O_RDONLY, 0777))
+    print(run(re, s))
+
     return 0
 
 def target(*args):
     return entry_point, None
+
+def jitpolicy(driver):
+    from rpython.jit.codewriter.policy import JitPolicy
+    return JitPolicy()
+
+
 
 def mainloop(r, string, rig):
     """ Returns if string matches the regex r """
@@ -52,9 +62,11 @@ def mainloop(r, string, rig):
 
     i = 0
     while i < len(string) - 1:  # Main program loop
-        c = string[i + 1]
+        jitdriver.can_enter_jit(r=r, i=i, string=string, rig=rig)
+        jitdriver.jit_merge_point(r=r, i=i, string=string, rig=rig)
+
         r.updateFinal()  # Explicitly call update here, cache the values
-        r.shift(rig.zero, c)
+        r.shift(rig.zero, string[i+1])
         i += 1
 
     r.updateFinal()

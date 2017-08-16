@@ -3,6 +3,7 @@
     weighted regular expressions """
 
 class Expr(object):
+    _imutable_fields_ = ["rig"]
     def __init__(self, rig):
         """ rig is a semiring with zero, one, plus and mult """
         self._final = rig.zero
@@ -15,6 +16,7 @@ class Expr(object):
 class Sym(Expr):
     """ A literal symbol in the regex """
 
+    _imutable_fields_ = ["weightFunction", "rig", "tag", "_empty"]
     def __init__(self, weightFunction, rig, tag=""):
         Expr.__init__(self, rig)
         self.weightFunction = weightFunction  # A function from the alphabet to the rig
@@ -37,6 +39,7 @@ class Sym(Expr):
 class Eps(Expr):
     """ A null string in the regex """
 
+    _imutable_fields_ = ["rig", "_empty"]
     def __init__(self, rig):
         Expr.__init__(self, rig)
         self._empty = self._rig.one
@@ -57,6 +60,7 @@ class Eps(Expr):
 class Rep(Expr):
     """ Repetiton: exp repeated zero or more times """
 
+    _imutable_fields_ = ["rig", "_empty", "exp"]
     def __init__(self, exp, rig):
         Expr.__init__(self, rig)
         self.exp = exp
@@ -78,6 +82,7 @@ class Rep(Expr):
 class Plus(Expr):
     """ exp repeated one or more times """
 
+    _imutable_fields_ = ["rig", "_empty", "exp"]
     def __init__(self, exp, rig):
         Expr.__init__(self, rig)
         self.exp = exp
@@ -99,6 +104,7 @@ class Plus(Expr):
 class Question(Expr):
     """ exp 1 or 0 times """
 
+    _imutable_fields_ = ["rig", "_empty", "exp"]
     def __init__(self, exp, rig):
         Expr.__init__(self, rig)
         self.exp = exp
@@ -120,6 +126,7 @@ class Question(Expr):
 class Branch(Expr):
     """ A superclass for binary operators """
 
+    _imutable_fields_ = ["rig", "_empty", "left", "right"]
     def __init__(self, left, right, rig):
         Expr.__init__(self, rig)
         self.left = left

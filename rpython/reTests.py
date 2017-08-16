@@ -1,7 +1,7 @@
 # Tests taken from: https://hg.python.org/cpython/file/178075fbff3a/Lib/test/re_tests.py
 
 # The 3 possible outcomes for each pattern
-[SUCCEED, FAIL, SYNTAX_ERROR] = range(3)
+[FAIL, SUCCEED, SYNTAX_ERROR] = range(3)
 
 # Test suite (for verifying correctness)
 #
@@ -51,7 +51,7 @@ tests = [
 #    (r'[a\0]', '\0', SUCCEED, 'found', '\0'),
 #    (r'[^a\0]', '\0', FAIL),
 
-    (r"a{10,15}", "aaaaaaaaaaaa", SUCCEED),
+#    (r"a{10,15}", "aaaaaaaaaaaa", SUCCEED),
     (r'[ad][bef][c]', 'abc', SUCCEED),
     # Test various letter escapes
     (r'\a\b\f\n\r[\t]\v', '\a\b\f\n\r\t\v', SUCCEED, 'found', '\a\b\f\n\r\t\v'),
@@ -174,7 +174,7 @@ tests = [
     ('(a+|b)*', 'ab', SUCCEED, 'found+"-"+g1', 'ab-b'),
     ('(a+|b)+', 'ab', SUCCEED, 'found+"-"+g1', 'ab-b'),
     ('(a+|b)?', 'ab', SUCCEED, 'found+"-"+g1', 'a-a'),
-    (')(', '-', SYNTAX_ERROR),
+    ('()(', '-', SYNTAX_ERROR),
     ('[^ab]*', 'cde', SUCCEED, 'found', 'cde'),
     ('abc', '', FAIL),
     ('a*', '', SUCCEED, 'found', ''),
@@ -340,7 +340,7 @@ tests = [
     ('(a+|b){1,}', 'ab', SUCCEED, 'found+"-"+g1', 'ab-b'),
     ('(a+|b)?', 'ab', SUCCEED, 'found+"-"+g1', 'a-a'),
     ('(a+|b){0,1}', 'ab', SUCCEED, 'found+"-"+g1', 'a-a'),
-    (')(', '-', SYNTAX_ERROR),
+    ('()(', '-', SYNTAX_ERROR),
     ('[^ab]*', 'cde', SUCCEED, 'found', 'cde'),
     ('abc', '', FAIL),
     ('a*', '', SUCCEED, 'found', ''),
@@ -473,7 +473,7 @@ tests = [
     ('(?i)(a+|b)?', 'AB', SUCCEED, 'found+"-"+g1', 'A-A'),
     ('(?i)(a+|b){0,1}', 'AB', SUCCEED, 'found+"-"+g1', 'A-A'),
     ('(?i)(a+|b){0,1}?', 'AB', SUCCEED, 'found+"-"+g1', '-None'),
-    ('(?i))(', '-', SYNTAX_ERROR),
+    ('(?i)()(', '-', SYNTAX_ERROR),
     ('(?i)[^ab]*', 'CDE', SUCCEED, 'found', 'CDE'),
     ('(?i)abc', '', FAIL),
     ('(?i)a*', '', SUCCEED, 'found', ''),
@@ -595,4 +595,5 @@ tests = [
     # (r'\x00ff', '\377', SUCCEED, 'found', chr(255)),
     (r'\t\n\v\r\f\a\g', '\t\n\v\r\f\ag', SUCCEED, 'found', '\t\n\v\r\f\ag'),
     ('\t\n\v\r\f\a\g', '\t\n\v\r\f\ag', SUCCEED, 'found', '\t\n\v\r\f\ag'),
+    ('ab{9}a', 'abbbbbbbbba', SUCCEED)
 ]

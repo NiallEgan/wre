@@ -3,20 +3,21 @@ import copy
 from weightedRegex import *  # TODO: Tighten imports
 from weightFunctions import *
 
+
 CONCAT_MARKER = -1
 EPS_MARKER = -2
 CASE_INSENSITIVE = -3
 ESCAPED_SQUARE = -4
 
-class SyntaxError(Exception):
+class ReSyntaxError(Exception):
     def __init__(self, msg):
-        print(msg)  # TODO: Figure out a better way to do this in RPython
-    #    super(SyntaxError, self).__init__(msg)
+        print(msg)
+    #    Exception.__init__(self, msg)  # Doesn't work in RPython?
 
 def post2WExprTree(expr, rig, symGeneratingFunction):
     """ Creates the (weighted) syntax tree from a postfix expression """
     pieceStack = []
-    print(expr)
+#    print(expr)
     caseInsensitive = False
     if not expr:
         return Eps(rig)
@@ -33,10 +34,19 @@ def post2WExprTree(expr, rig, symGeneratingFunction):
                 pieceStack.append(Alt(pieceStack.pop(), pieceStack.pop(), rig))
 
             elif sym == ord("*"):  # Zero or more
-                pieceStack.append(Rep(pieceStack.pop(), rig))
+                # TODO: Should maybe allow e.g. '(a*)*' ?
+                prevPiece = pieceStack.pop()
+                if isinstance(prevPiece, Rep):
+                    raise ReSyntaxError("* Repetition")
+                else:
+                    pieceStack.append(Rep(prevPiece, rig))
 
             elif sym == ord("+"):  # One or more
-                pieceStack.append(Plus(pieceStack.pop(), rig))
+                prevPiece = pieceStack.pop()
+                if isinstance(prevPiece, Plus):
+                    raise ReSyntaxError("+ Repetition")
+                else:
+                    pieceStack.append(Plus(prevPiece, rig))
 
             elif sym == ord("?"):  # Zero or one
                 pieceStack.append(Question(pieceStack.pop(), rig))
@@ -122,12 +132,12 @@ def post2WExprTree(expr, rig, symGeneratingFunction):
                     pieceStack.append(Sym(symGeneratingFunction(sym, rig), rig, chr(sym)))
 
         if len(pieceStack) != 1:
-            raise SyntaxError("Syntax Error: Incorrect number of operands")
+            raise ReSyntaxError("Syntax Error: Incorrect number of operands")
         return pieceStack[0]
 
     except IndexError:
         # TODO: Break errors into more specific cases
-        raise SyntaxError("Compilation error")
+        raise ReSyntaxError("Compilation error")
 
 
 def generateCharacterClass(classExp, rig, symGeneratingFunction, caseInsensitive):
@@ -136,6 +146,8 @@ def generateCharacterClass(classExp, rig, symGeneratingFunction, caseInsensitive
         using a weighted automata, by e.g. giving two ways for "a" to match
         [aa-z]  with the standard int semiring """
 
+    if classExp == []:
+        raise ReSyntaxError("Invalid character class")
     characterClass = []
     classExp = classExp
 
@@ -154,6 +166,9 @@ def generateCharacterClass(classExp, rig, symGeneratingFunction, caseInsensitive
                     characterClass.append(ord("-"))
                     characterClass.append(upperBound)
                 else:
+                    if upperBound < lowerBound:
+#                        print("Upp < lower")
+                        raise ReSyntaxError("Invalid Character class")
                     # TODO: This approach will probably only work for a limited
                     #       set of characters
                     for i in range(lowerBound, upperBound + 1):
@@ -285,7 +300,7 @@ def regexToPost(regExpPreConverted):
                 else:
                     opStack.append(token)
             except IndexError:
-                raise SyntaxError("Mismatched left paren")
+                raise ReSyntaxError("Mismatched left paren")
 
         elif token == ord(")"):
             try:
@@ -293,7 +308,7 @@ def regexToPost(regExpPreConverted):
                     outputQueue.put(opStack.pop())
                 opStack.pop()
             except IndexError:
-                raise SyntaxError("Misatched right paren")
+                raise ReSyntaxError("Misatched right paren")
 
         elif token == ord("{"):
             while opStack and prec[opStack[-1]] >= prec[token]:
@@ -341,7 +356,7 @@ def regexToPost(regExpPreConverted):
                                 outputQueue.put(escapes.get(escapedCharacter, escapedCharacter))
 
                         except IndexError:
-                            raise SyntaxError("Inappropriate escaped bracket")
+                            raise ReSyntaxError("Inappropriate escaped bracket")
 
                     else:
                         outputQueue.put(nextToken)
@@ -349,7 +364,7 @@ def regexToPost(regExpPreConverted):
                             outputQueue.put(ord("-"))
                             hyphenFound = False
                 except IndexError:
-                    raise SyntaxError("Mismatched [")
+                    raise ReSyntaxError("Mismatched [")
 
         else:
             outputQueue.put(token)

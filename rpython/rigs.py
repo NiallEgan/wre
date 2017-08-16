@@ -19,3 +19,13 @@ class BoolRig(object):
 
     def plus(self, x, y):
         return x or y
+
+class BitRig(object):
+    one = 1
+    zero = 0
+
+    def mult(self, x, y):
+        return x & y
+
+    def plus(self, x, y):
+        return x | y
