@@ -47,6 +47,18 @@ class SymbolClassMatch(WeightFunctionBase):
             s = self.rig.plus(s, f.call(sym))
         return s
 
+class PositionMatcher(WeightFunctionBase):
+
+    def __init__(self, sym, rig):
+        WeightFunctionBase.__init__(self, rig)
+        self.sym = sym
+
+    def call(self, otherSym):
+        if otherSym[0] == self.sym:
+            return otherSym[1]
+        else:
+            return self.rig.zero
+
 class CaseInsensitiveWrapper(WeightFunctionBase):
     _imutable_fields_ = ["base"]
 
@@ -65,10 +77,10 @@ class InvertWrapper(WeightFunctionBase):
         self.base = base
 
     def call(self, sym):
-        if self.base.call(sym) == self.rig.one:
-            return self.rig.zero
-        else:
+        if self.base.call(sym) == self.rig.zero:
             return self.rig.one
+        else:
+            return self.rig.zero
 
 class AllButNewLineMatcher(WeightFunctionBase):
     def __init__(self, rig):

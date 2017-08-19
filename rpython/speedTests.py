@@ -24,8 +24,8 @@ if __name__ == '__main__':
     x = 0
     for i in range(100):
         print(i)
-        x += timeit("print(subprocess.check_output(['./mainJITLess', 'c*ab{9}ac*', 'tests/cabac/cabac%d.txt']))" % i,
-                number=3, setup='import subprocess')
+        x += timeit("print(subprocess.check_output(['python', 'reMatcher.py', 'c*ab{9}ac*', 'tests/cabac/cabac%d.txt']))" % i,
+                     number=3, setup='import subprocess')
 
     avgTime = x / 100
     print("Average time: %f" % avgTime)
@@ -38,5 +38,5 @@ if __name__ == '__main__':
         return "%s,%s,%f,%s\n" % (date, time, avgTime, testType)
 
 
-    fp.write(csvFormat(avgTime, "RPython - No JIT"))
+    fp.write(csvFormat(avgTime, "Python re Module"))
     fp.close()
