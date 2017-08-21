@@ -380,7 +380,7 @@ def regexToPost(regExpPreConverted):
 
 def compileRegex(exp, rig, matchFunction):
     """ Creates a compiled regex tree """
-    return post2WExprTree(regexToPost(list(exp)), rig, matchFunction)
+    return post2WExprTree(regexToPost(exp), rig, matchFunction)
 
 def compilePartial(exp, rig, matchFunction):
     """ Creates a regex tree which will accept partial matches """

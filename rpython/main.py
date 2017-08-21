@@ -1,11 +1,14 @@
 import os
 import sys
 from parser import compileRegex, ReSyntaxError, compilePartial
-from weightFunctions import createSingleSymbolMatch
-from rigs import BoolRig, BitRig
+from weightFunctions import createSingleSymbolMatch, createPositionMatcher
+from rigs import BitRig, PositionRig
 from rpython.rlib.jit import JitDriver
 
 jitdriver = JitDriver(reds=["i", "string", "rig"], greens=["r"])
+# QUESTION: Should mode be a green variable?
+
+PARTIAL_MATCH, COMPLETE_MATCH, FIND_LEFTMOST = range(0,3)
 
 def readFile(filename):
     fp = os.open(filename, os.O_RDONLY, 0777)
@@ -18,27 +21,43 @@ def readFile(filename):
     os.close(fp)
     return f
 
-def run(re, s):
+def run(re, s, mode):
 
-    # TODO: Create a rig syntax in the file...
-    string = [ord(c) for c in s]
-    try:
+    print(len(s))
+    string = [(i, ord(s[i])) for i in range(len(s))]
+
+    if mode == PARTIAL_MATCH:
         ast = compilePartial(re, BitRig(), createSingleSymbolMatch)
         return mainloop(ast, string, BitRig())
-    except ReSyntaxError:
-        print("Syntax Error caught")
-        return 0
+
+    elif mode == COMPLETE_MATCH:
+        ast = compileRegex(re, BitRig(), createSingleSymbolMatch)
+        return mainloop(ast, string, BitRig())
+
+    elif mode == FIND_LEFTMOST:
+        ast = compileRegex(re, PositionRig(), createPositionMatcher)
+        """    zippedList = []
+        for i in range(len(string)):
+            zippedList.append((i, string[i]))  # For some reason list(enumerate(string)) causes RPython to hang?
+        """
+        return mainloop(ast, string, PositionRig())
+
+    else:
+        raise ReSyntaxError("Un recognised mode: %d" % mode)
 
 
 def entry_point(argv):
     try:
         re = argv[1]
         s = readFile(argv[2])
+        mode = int(argv[3])
+        print(run(re, s, mode))
     except IndexError:
-        print("No file name supplied")
+        print("Not enough arguments: run in the form re file mode")
         return 1
-
-    print(run(re, s))
+    except ValueError:
+        print("Invalid mode option")
+        return 1
 
     return 0
 
@@ -57,7 +76,7 @@ def mainloop(r, string, rig):
     if string == []:
         return r.empty()
 
-    r.shift(rig.one, string[0])  # Want to shift in an initial mark to start the
+    r.shift(r._rig.one, string[0])  # Want to shift in an initial mark to start the
     # NFA
 
     i = 0

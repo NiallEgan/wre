@@ -2,16 +2,16 @@
     http://sebfisch.github.io/haskell-regexp/regexp-play.pdf for
     weighted regular expressions """
 
-class Expr(object):
+class Expr(object): # Embed into rig classes
     _imutable_fields_ = ["rig"]
+
     def __init__(self, rig):
         """ rig is a semiring with zero, one, plus and mult """
-        self._final = rig.zero
         self._rig = rig
+        self._final = self._rig.zero
 
     def final(self):
         return self._final
-
 
 class Sym(Expr):
     """ A literal symbol in the regex """

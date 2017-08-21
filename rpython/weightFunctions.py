@@ -1,6 +1,12 @@
 """ RPython doesn't allow for closures, so have to use objects
     instead """
 
+def extractSym(f):
+    def wrapper(self, sym):
+        return f(self, sym[1])
+
+    return wrapper
+
 class WeightFunctionBase(object):
     """ Abstract base class """
 
@@ -19,7 +25,9 @@ class SingleSymbolMatch(WeightFunctionBase):
         WeightFunctionBase.__init__(self, rig)
         self.sym = sym
 
+    @extractSym
     def call(self, otherSym):
+        print(chr(self.sym), chr(otherSym))
         if otherSym == self.sym:
             return self.rig.one
         else:
@@ -48,16 +56,23 @@ class SymbolClassMatch(WeightFunctionBase):
         return s
 
 class PositionMatcher(WeightFunctionBase):
+    _imutable_fields_ = ["sym"]
 
     def __init__(self, sym, rig):
         WeightFunctionBase.__init__(self, rig)
         self.sym = sym
 
+
     def call(self, otherSym):
-        if otherSym[0] == self.sym:
-            return otherSym[1]
+        print(otherSym, self.sym)
+        if otherSym[1] == self.sym:
+
+            return [(0, otherSym[0])]
         else:
             return self.rig.zero
+
+def createPositionMatcher(sym, rig):
+    return PositionMatcher(sym, rig)
 
 class CaseInsensitiveWrapper(WeightFunctionBase):
     _imutable_fields_ = ["base"]
@@ -66,8 +81,9 @@ class CaseInsensitiveWrapper(WeightFunctionBase):
         WeightFunctionBase.__init__(self, rig)
         self.base = base
 
+    @extractSym
     def call(self, sym):
-        return self.base.call(ord(chr(sym).lower()))
+        return self.base.call((0, ord(chr(sym).lower())))
 
 class InvertWrapper(WeightFunctionBase):
     _imutable_fields_ = ["base"]
@@ -86,6 +102,7 @@ class AllButNewLineMatcher(WeightFunctionBase):
     def __init__(self, rig):
         WeightFunctionBase.__init__(self, rig)
 
+    @extractSym
     def call(self, sym):
         if sym == ord("\n"):
             return self.rig.zero
