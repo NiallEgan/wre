@@ -5,19 +5,13 @@
 
 def toInt(f):
     def wrapper(self, x, y):
-        return [(f(self, x[0][0], y[0][0]), 0)]
-
-    return wrapper
-
-def toTuple(f):
-    def wrapper(self, x, y):
-        return [f(self, x[0], y[0])]
+        return (f(self, x[0], y[0]), 0)
 
     return wrapper
 
 class Rig(object):
-    one = [(0, 0)]
-    zero = [(0, 0)]
+    one = (0, 0)
+    zero = (0, 0)
 
     def mult(self, x, y):
         return self.one
@@ -26,8 +20,8 @@ class Rig(object):
         return self.one
 
 class IntRig(Rig):
-    one = [(1, 0)]
-    zero = [(0, 0)]
+    one = (1, 0)
+    zero = (0, 0)
 
     @toInt
     def mult(self, x, y):
@@ -37,34 +31,9 @@ class IntRig(Rig):
     def plus(self, x, y):
         return x + y
 
-""" Issue: As RPython does not support static polymorphism, it is non-trivial
-    to add support for multiple rigs (at least with different typed ones and zeroes)
-    Possible solutions:
-    1. Somehow build in support for static polymorphism - very difficult
-    2. Except that the program will be fundamentally limited. Pick a set of functions
-       which the program should be able to perform, use the most complex type necessary
-       everywhere. - ugly, limits the program intrinsically.
-
-"""
-"""
-class _BoolRig(_Rig):
-    def __init__(self, one, zero):
-        _Rig.__init__(self, one, zero)
-
-    @fromToZ2
-    def mult(self, x, y):
-        return x and y
-
-    @fromToZ2
-    def plus(self, x, y):
-        return x or y
-
-boolRig = _BoolRig(True, False)
-"""
-
 class BitRig(Rig):
-    one = [(1, 0)]
-    zero = [(0, 0)]
+    one = (1, 0)
+    zero = (0, 0)
 
     @toInt
     def mult(self, x, y):
@@ -74,34 +43,68 @@ class BitRig(Rig):
     def plus(self, x, y):
         return x | y
 
-class PositionRig(Rig):
+class StartPositionRig(Rig):
     """
-     zero = (2, 0) : Non matching character
-     one = (1, 0)   : A matching, but non starting character
+     zero = (2, 0) : Non matching character, which causes the whole match to fail
+     one = (1, 0)   : A non matching character, but not causing a match to fail
      Other elements will be of the form (0, n) where n is the
      index of the char
     """
 
-    one = [(1, 0)]
-    zero = [(2, 0)]
+    one = (1, 0)
+    zero = (2, 0)
 
-    @toTuple
-    def mult(self, x, y):
-        if x[0] == 2 or y[0] == 2:
-            return self.zero[0]  # Just zero really, but will get wrapped
-        elif x[0] == 1:
+    def mult(self, x, y):  # Reperesenting a concatanation
+        if x == self.zero or y == self.zero:
+            return self.zero
+        elif x == self.one:
             return y
         else:
             return x
 
-    @toTuple
     def plus(self, x, y):  # Reperesenting an alternation
-        # RPython doesn't support min for tuples...
-        if x[0] < y[0]:
-            return x
-        elif x[0] > y[0]:
+        if x == self.zero:
             return y
-        elif x[1] < y[1]:
+        elif y == self.zero:
+            return x
+        elif x == self.one:
+            return y
+        elif y == self.one:
             return x
         else:
+            return (0, min(x[1], y[1]))
+
+class StartEndPositionRig(Rig):
+    """ Multiply : (x, y) * (a, b) = (x, b) """
+
+    one = (-1, -1)
+    zero = (-2, -2)
+
+    def mult(self, x, y):  # Reperesenting a concatanation
+        if x == self.zero or y == self.zero:
+            return self.zero
+        elif x == self.one:
             return y
+        elif y == self.one:
+            return x
+        else:
+            return (x[0], y[1])
+
+    def plus(self, x, y):  # Reperesenting an alternation
+        if x == self.zero:
+            return y
+        elif y == self.zero:
+            return x
+        elif x == self.one:
+            return y
+        elif y == self.one:
+            return x
+        else:
+            if x[0] < y [0]:  # Leftmost first
+                return x
+            elif y[0] < x[0]:
+                return y
+            elif x[1] < y[1]:  # Then longest
+                return y
+            else:
+                return x

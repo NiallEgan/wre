@@ -2,7 +2,7 @@
     http://sebfisch.github.io/haskell-regexp/regexp-play.pdf for
     weighted regular expressions """
 
-class Expr(object): # Embed into rig classes
+class Expr(object):
     _imutable_fields_ = ["rig"]
 
     def __init__(self, rig):
@@ -12,6 +12,10 @@ class Expr(object): # Embed into rig classes
 
     def final(self):
         return self._final
+
+    def reset(self):
+        self._final = self._rig.zero
+
 
 class Sym(Expr):
     """ A literal symbol in the regex """
@@ -35,6 +39,11 @@ class Sym(Expr):
 
     def copy(self):
         return Sym(self.weightFunction, self._rig, self.tag)
+
+    def reset(self):
+        self._final = self._rig.zero
+        self.mark = self._rig.zero
+
 
 class Eps(Expr):
     """ A null string in the regex """
@@ -79,6 +88,10 @@ class Rep(Expr):
     def copy(self):
         return Rep(self.exp.copy(), self._rig)
 
+    def reset(self):
+        self.exp.reset()
+        self._final = self._rig.zero
+
 class Plus(Expr):
     """ exp repeated one or more times """
 
@@ -100,6 +113,10 @@ class Plus(Expr):
 
     def copy(self):
         return Plus(self.exp.copy(), self._rig)
+
+    def reset(self):
+        self.exp.reset()
+        self._final = self._rig.zero
 
 class Question(Expr):
     """ exp 1 or 0 times """
@@ -123,6 +140,10 @@ class Question(Expr):
     def copy(self):
         return Question(self.exp.copy(), self._rig)
 
+    def reset(self):
+        self.exp.reset()
+        self._final = self._rig.zero
+
 class Branch(Expr):
     """ A superclass for binary operators """
 
@@ -131,6 +152,11 @@ class Branch(Expr):
         Expr.__init__(self, rig)
         self.left = left
         self.right = right
+
+    def reset(self):
+        self.left.reset()
+        self.right.reset()
+        self._final = self._rig.zero
 
 class Seq(Branch):
     """ Concatanation: match left and right """

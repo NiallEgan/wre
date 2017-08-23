@@ -55,7 +55,7 @@ class SymbolClassMatch(WeightFunctionBase):
             s = self.rig.plus(s, f.call(sym))
         return s
 
-class PositionMatcher(WeightFunctionBase):
+class StartPositionMatcher(WeightFunctionBase):
     _imutable_fields_ = ["sym"]
 
     def __init__(self, sym, rig):
@@ -64,15 +64,30 @@ class PositionMatcher(WeightFunctionBase):
 
 
     def call(self, otherSym):
-        print(otherSym, self.sym)
         if otherSym[1] == self.sym:
-
-            return [(0, otherSym[0])]
+            return (0, otherSym[0])
         else:
             return self.rig.zero
 
-def createPositionMatcher(sym, rig):
-    return PositionMatcher(sym, rig)
+def createStartPositionMatcher(sym, rig):
+    return StartPositionMatcher(sym, rig)
+
+class StartEndPositionMatcher(WeightFunctionBase):
+        _imutable_fields_ = ["sym"]
+
+        def __init__(self, sym, rig):
+            WeightFunctionBase.__init__(self, rig)
+            self.sym = sym
+
+        def call(self, otherSym):
+#            print(otherSym, self.sym)
+            if otherSym[1] == self.sym:
+                return (otherSym[0], otherSym[0])
+            else:
+                return self.rig.zero
+
+def createStartEndPositionMatcher(sym, rig):
+    return StartEndPositionMatcher(sym, rig)
 
 class CaseInsensitiveWrapper(WeightFunctionBase):
     _imutable_fields_ = ["base"]
@@ -104,7 +119,15 @@ class AllButNewLineMatcher(WeightFunctionBase):
 
     @extractSym
     def call(self, sym):
-        if sym == ord("\n"):
+        if sym == ord("\t"):  # Should this be producing one or (0,n)?
             return self.rig.zero
         else:
             return self.rig.one
+
+class OneProducer(WeightFunctionBase):
+    def __init__(self, rig):
+        WeightFunctionBase.__init__(self, rig)
+
+    @extractSym
+    def call(self, sym):
+        return self.one
