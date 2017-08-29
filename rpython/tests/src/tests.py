@@ -1,8 +1,5 @@
 # Just a lightweight program to use reTests.py for now
 
-from weightedRegex import *
-from rigs import *
-from parser import *
 from reTests import *
 import subprocess
 
@@ -22,7 +19,7 @@ if __name__ == '__main__':
         string = test[1]
 
         try:
-            result = m[subprocess.check_output(["python", "main.py", regex, string, "0", "stringMode"])]
+            result = m[subprocess.check_output(["python", "src/main.py", regex, string, "0", "stringMode"])]
             if result !=  test[2]:
                 print(test)
                 print(result)

@@ -1,4 +1,8 @@
-class Queue():
+class Queue(object):
+    """ A basic queue class (in built not supported in RPython)
+        uses standard reversed front, back approach for good
+        amortized time
+    """
     def __init__(self):
         self.front = []
         self.back = []

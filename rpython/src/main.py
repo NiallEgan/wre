@@ -6,8 +6,6 @@ from rigs import BitRig, StartPositionRig, StartEndPositionRig
 from rpython.rlib.jit import JitDriver
 
 jitdriver = JitDriver(reds=["i", "string", "ans", "prevAns"], greens=["mode", "r", "rig"])
-# QUESTION: Should rig mode be a green variable?
-
 nModes = 5
 PARTIAL_MATCH, COMPLETE_MATCH, FIND_LEFTMOST_START,\
     FIND_LEFTMOST_RANGE, FIND_ALL = range(0, nModes)

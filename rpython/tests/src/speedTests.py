@@ -22,15 +22,20 @@ def genCabacTests():
 
 if __name__ == '__main__':
     x = 0
+    mode = 1
     for i in range(100):
         print(i)
-        x += timeit("print(subprocess.check_output(['python', 'reMatcher.py', 'c*ab{9}ac*', 'tests/cabac/cabac%d.txt']))" % i,
-                     number=3, setup='import subprocess')
+        if mode == 0:
+            x += timeit("print(subprocess.check_output(['python', 'tests/src/reMatcher.py', 'ab{9}a', 'tests/tests/cabac/cabac%d.txt']))" % i,
+                        number=3, setup='import subprocess')
+        else:
+            x += timeit("print(subprocess.check_output(['./jit', 'ab{9}a', 'tests/tests/cabac/cabac%d.txt', '4']))" % i,
+                        number=3, setup='import subprocess')
 
     avgTime = x / 100
     print("Average time: %f" % avgTime)
 
-    fp = open("tests/testdata/cabacTests.txt", "a")
+    fp = open("tests/testdata/cabacPositionTests.txt", "a")
 
     def csvFormat(avgTime, testType):
         date = "{:%Y-%m-%d}".format(datetime.date.today())
@@ -38,5 +43,5 @@ if __name__ == '__main__':
         return "%s,%s,%f,%s\n" % (date, time, avgTime, testType)
 
 
-    fp.write(csvFormat(avgTime, "Python re Module"))
+    fp.write(csvFormat(avgTime, "jit - ab{9}a"))
     fp.close()

@@ -17,9 +17,6 @@ if __name__ == '__main__':
     try:
         regEx = sys.argv[1]
         s = readFile(sys.argv[2])
+        p = re.findall(regEx, s)
     except IndexError:
         print("No file name supplied")
-
-    p = re.compile(regEx)
-    p.match(s)
-
