@@ -3,39 +3,50 @@
     weighted regular expressions """
 
 class Expr(object):
+    """ Abstract base class """
     _imutable_fields_ = ["rig"]
 
     def __init__(self, rig):
         """ rig is a semiring with zero, one, plus and mult """
         self._rig = rig
         self._final = self._rig.zero
+        self._empty = self._rig.zero
 
     def final(self):
+        """ Returns the weight of the current symbol after being
+            processes by the WFA. This value is updated by
+            updateFinal
+        """
         return self._final
 
     def reset(self):
+        """ Resets the regular expressions """
         self._final = self._rig.zero
+
+    def empty(self):
+        """ Returns the weight of the empty string for
+            the piece of the regular expression. A getter for
+            _empty
+        """
+        return self._empty
 
 
 class Sym(Expr):
     """ A literal symbol in the regex """
+    _imutable_fields_ = ["weightFunction", "tag", "_empty"]
 
-    _imutable_fields_ = ["weightFunction", "rig", "tag", "_empty"]
     def __init__(self, weightFunction, rig, tag=""):
         Expr.__init__(self, rig)
         self.weightFunction = weightFunction  # A function from the alphabet to the rig
         self.mark = self._rig.zero
-        self._empty = self._rig.zero
         self.tag = tag
 
     def shift(self, mark, symbol):
         self.mark = self._rig.mult(mark, self.weightFunction.call(symbol))
 
-    def empty(self):
-        return self._empty  # This value will never change
-
     def updateFinal(self):
         self._final = self.mark
+        return self._final
 
     def copy(self):
         return Sym(self.weightFunction, self._rig, self.tag)
@@ -56,11 +67,8 @@ class Eps(Expr):
     def shift(self, mark, symbol):
         return self
 
-    def empty(self):
-        return self._empty
-
     def updateFinal(self):
-        pass  # value never changes
+        return self._final  # Value is always one
 
     def copy(self):
         return Eps(self._rig)
@@ -78,12 +86,9 @@ class Rep(Expr):
     def shift(self, mark, symbol):
         self.exp.shift(self._rig.plus(mark, self._final), symbol)
 
-    def empty(self):
-        return self._empty
-
     def updateFinal(self):
-        self.exp.updateFinal()
-        self._final = self.exp.final()
+        self._final = self.exp.updateFinal()
+        return self._final
 
     def copy(self):
         return Rep(self.exp.copy(), self._rig)
@@ -104,12 +109,9 @@ class Plus(Expr):
     def shift(self, mark, symbol):
         self.exp.shift(self._rig.plus(mark, self._final), symbol)
 
-    def empty(self):
-        return self._empty
-
     def updateFinal(self):
-        self.exp.updateFinal()
-        self._final = self.exp.final()
+        self._final = self.exp.updateFinal()
+        return self._final
 
     def copy(self):
         return Plus(self.exp.copy(), self._rig)
@@ -130,12 +132,9 @@ class Question(Expr):
     def shift(self, mark, symbol):
         self.exp.shift(mark, symbol)
 
-    def empty(self):
-        return self._empty
-
     def updateFinal(self):
-        self.exp.updateFinal()
-        self._final = self.exp.final()
+        self._final = self.exp.updateFinal()
+        return self._final
 
     def copy(self):
         return Question(self.exp.copy(), self._rig)
@@ -148,10 +147,11 @@ class Branch(Expr):
     """ A superclass for binary operators """
 
     _imutable_fields_ = ["rig", "_empty", "left", "right"]
-    def __init__(self, left, right, rig):
+    def __init__(self, left, right, rig, tag=""):
         Expr.__init__(self, rig)
         self.left = left
         self.right = right
+        self.tag = tag
 
     def reset(self):
         self.left.reset()
@@ -172,14 +172,11 @@ class Seq(Branch):
                          self._rig.mult(mark, self.left.empty()),
                          self.left.final()), symbol)
 
-    def empty(self):
-        return self._empty
-
     def updateFinal(self):
-        self.left.updateFinal()
-        self.right.updateFinal()
-        self._final = self._rig.plus(self._rig.mult(self.left.final(), self.right.empty()),
-                                     self.right.final())
+        l = self.left.updateFinal()
+        r = self.right.updateFinal()
+        self._final = self._rig.plus(self._rig.mult(l, self.right.empty()), r)
+        return self._final
 
     def copy(self):
         return Seq(self.left.copy(), self.right.copy(), self._rig)
@@ -195,13 +192,11 @@ class Alt(Branch):
         self.left.shift(mark, symbol)
         self.right.shift(mark, symbol)
 
-    def empty(self):
-        return self._empty
-
     def updateFinal(self):
-        self.left.updateFinal()
-        self.right.updateFinal()
-        self._final = self._rig.plus(self.left.final(), self.right.final())
+        l = self.left.updateFinal()
+        r = self.right.updateFinal()
+        self._final = self._rig.plus(l, r)
+        return self._final
 
     def copy(self):
         return Alt(self.left.copy(), self.right.copy(), self._rig)

@@ -1,6 +1,6 @@
-from queue import Queue  # Inbuilt Queue is not RPython...
+from queue import Queue  # Inbuilt Queue is not RPython, so use custom class
 import copy
-from weightedRegex import *  # TODO: Tighten imports
+from weightedRegex import *
 from weightFunctions import *
 
 
@@ -10,15 +10,18 @@ CASE_INSENSITIVE = -3
 ESCAPED_SQUARE = -4
 
 class ReSyntaxError(Exception):
+    """ Simple class for a syntax error """
     def __init__(self, msg):
         print(msg)
     #    Exception.__init__(self, msg)  # Doesn't work in RPython?
 
-def post2WExprTree(expr, rig, symGeneratingFunction):
-    """ Creates the (weighted) syntax tree from a postfix expression """
+def post2WExprTree(expr, rig, symGeneratingFunction, partialCompilation):
+    """ Creates the (weighted) syntax tree from a postfix
+        expression
+    """
     pieceStack = []
-#    print(expr)
     caseInsensitive = False
+
     if not expr:
         return Eps(rig)
     try:
@@ -34,7 +37,6 @@ def post2WExprTree(expr, rig, symGeneratingFunction):
                 pieceStack.append(Alt(pieceStack.pop(), pieceStack.pop(), rig))
 
             elif sym == ord("*"):  # Zero or more
-                # TODO: Should maybe allow e.g. '(a*)*' ?
                 prevPiece = pieceStack.pop()
                 if isinstance(prevPiece, Rep):
                     raise ReSyntaxError("* Repetition")
@@ -52,9 +54,7 @@ def post2WExprTree(expr, rig, symGeneratingFunction):
                 pieceStack.append(Question(pieceStack.pop(), rig))
 
             elif sym == ord("{"):  # Repetition count
-                # TODO: This part could do with some serious optimisation
-                frontN = expr.pop() - 48
-                # TODO: Will only work for single digit reps
+                frontN = -expr.pop()
 
                 if expr.pop() == ord("}"):
                     # repeat exactly frontN times
@@ -62,7 +62,7 @@ def post2WExprTree(expr, rig, symGeneratingFunction):
                         pieceStack.pop()
                         pieceStack.append(Eps(rig))
                     elif frontN == 1:
-                        pass
+                        pass  # Correct?
                     else:
                         repeatingExpr = pieceStack.pop()
                         chain = repeatingExpr
@@ -84,7 +84,7 @@ def post2WExprTree(expr, rig, symGeneratingFunction):
                             pieceStack.append(Rep(pieceStack.pop(), rig))
                     else:
                         # repeat between frontN and endN times
-                        endN -= 48
+                        endN = -endN
                         repeatingExpr = pieceStack.pop()
                         chain = repeatingExpr if frontN > 0 else Eps(rig)
 
@@ -96,7 +96,6 @@ def post2WExprTree(expr, rig, symGeneratingFunction):
 
                         expr.pop()  # Discard the "{"
                         pieceStack.append(chain)
-
 
             elif sym == ord("["):  # Character class
                 classExp = []
@@ -121,18 +120,18 @@ def post2WExprTree(expr, rig, symGeneratingFunction):
                 pieceStack.append(Eps(rig))
 
             elif sym == CASE_INSENSITIVE:
-            #    print("case inse")
                 caseInsensitive = True
 
             else:  # Literal symbols
                 if caseInsensitive:
-                    pieceStack.append(Sym(CaseInsensitiveWrapper(symGeneratingFunction(ord(chr(sym).lower()) , rig),
-                                      rig), rig, chr(sym) + "CASE_INSENSITIVE"))
+                    pieceStack.append(Sym(CaseInsensitiveWrapper(symGeneratingFunction(ord(chr(sym).lower()),
+                                      rig), rig), rig, chr(sym) + "CASE_INSENSITIVE"))
                 else:
                     pieceStack.append(Sym(symGeneratingFunction(sym, rig), rig, chr(sym)))
 
         if len(pieceStack) != 1:
             raise ReSyntaxError("Syntax Error: Incorrect number of operands")
+
         return pieceStack[0]
 
     except IndexError:
@@ -167,10 +166,9 @@ def generateCharacterClass(classExp, rig, symGeneratingFunction, caseInsensitive
                     characterClass.append(upperBound)
                 else:
                     if upperBound < lowerBound:
-#                        print("Upp < lower")
                         raise ReSyntaxError("Invalid Character class")
                     # TODO: This approach will probably only work for a limited
-                    #       set of characters
+                    #       set of characters... i.e. ascii
                     for i in range(lowerBound, upperBound + 1):
                         characterClass.append(i)
             except IndexError:  # A literal "-"
@@ -199,7 +197,6 @@ def generateCharacterClass(classExp, rig, symGeneratingFunction, caseInsensitive
 
 def insertConcats(regExp):
     """ Inserts concats and tokenises everythig to ints """
-    # TODO: Currently this will work only for ASCII
     output = []
     insertMode = True
     literalMode = False
@@ -228,7 +225,6 @@ def insertConcats(regExp):
 def regexToPost(regExpPreConverted):
     """ Converts an infix regular expression to postfix """
 
-    # TODO: Not very efficent, needs optimising
     regExp = insertConcats(regExpPreConverted)
     regExp.reverse()  # top of stack at end of list
 
@@ -267,9 +263,8 @@ def regexToPost(regExpPreConverted):
                 regExp += [93, 57, 45, 48, 94, 91]
 
             else:
-                # TODO: Find a better way of doing this, parsing of octal and hex characters
+                # TODO: parsing of octal and hex characters
                 outputQueue.put(ord("\\"))
-            #    print(nextToken)
                 outputQueue.put(escapes.get(nextToken, nextToken))
 
         elif token in ops: #doesn't treat like a single unit
@@ -280,14 +275,12 @@ def regexToPost(regExpPreConverted):
         elif token == ord("("):
             try:
                 if regExp[-1] == ord(")"):
-                #    print("Inserting eps mark")
                     regExp.pop()
                     outputQueue.put(EPS_MARKER)
                 elif regExp[-1] == ord("?"):
-                    try:  # TODO: Make so that the concat markers never get put in to begin wtih
+                    try:
                         if (regExp[-2], regExp[-3], regExp[-4]) == (CONCAT_MARKER, ord("i"), ord(")")):
                             outputQueue.put(CASE_INSENSITIVE)
-                    #        print("MARK MADE")
                             regExp.pop() # 1
                             regExp.pop() # ?
                             regExp.pop() # i
@@ -316,10 +309,20 @@ def regexToPost(regExpPreConverted):
             outputQueue.put(ord("{"))
 
             #  Collect the rest of the repetition count
+            n = 0
             while True:
+
                 nextToken = regExp.pop()
-                outputQueue.put(nextToken)
-                if nextToken == ord("}"):
+                if nextToken >= 48 and nextToken <= 57:
+                    n = n * 10 + nextToken - 48
+                elif nextToken == ord(","):
+                    outputQueue.put(-n)  # A horrible hack...
+                    n = 0
+                    outputQueue.put(nextToken)
+                elif nextToken == ord("}"):
+                    if n != 0:
+                        outputQueue.put(-n)
+                    outputQueue.put(nextToken)
                     break
 
         elif token == ord("["):
@@ -330,7 +333,7 @@ def regexToPost(regExpPreConverted):
                 try:
                     nextToken = regExp.pop()
 
-                    # TODO: Should be able to parse hyphens as literals if appropriate
+                    # TODO: Should be able to parse literal "]"
                     if nextToken == ord("-"):
                         hyphenFound = True
 
@@ -342,7 +345,7 @@ def regexToPost(regExpPreConverted):
 
                     elif nextToken == ord("\\"):
                         try:
-                            #  TODO: Create classes for negative
+                            #  TODO: Create negative character classes inside character classes
                             escapedCharacter = regExp.pop()
                             if escapedCharacter == ord("]"):
                                 outputQueue.put(ESCAPED_SQUARE)  # Will be dealt with when building character classes
@@ -380,8 +383,16 @@ def regexToPost(regExpPreConverted):
 
 def compileRegex(exp, rig, matchFunction):
     """ Creates a compiled regex tree """
-    return post2WExprTree(regexToPost(exp), rig, matchFunction)
+    return post2WExprTree(regexToPost(exp), rig, matchFunction, False)
 
 def compilePartial(exp, rig, matchFunction):
     """ Creates a regex tree which will accept partial matches """
-    return post2WExprTree(regexToPost(".*(" + exp + ").*"), rig, matchFunction)
+
+    ast = post2WExprTree(regexToPost(exp), rig, matchFunction, True)
+
+    arbStart = Rep(Sym(OneProducer(rig), rig, "arb - start"), rig)
+    ast = Seq(arbStart, ast, rig)
+    arbEnd = Rep(Sym(OneProducer(rig), rig, "arb - end"), rig)
+    ast = Seq(ast, arbEnd, rig)
+
+    return ast

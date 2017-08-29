@@ -1,7 +1,9 @@
-""" RPython doesn't allow for closures, so have to use objects
+""" These are wrapper classes for weight functions: as
+    RPython doesn't allow for closures, so have to use objects
     instead """
 
 def extractSym(f):
+    # Extracts the actual character, ignoring position information
     def wrapper(self, sym):
         return f(self, sym[1])
 
@@ -19,6 +21,7 @@ class WeightFunctionBase(object):
         return self.rig.zero
 
 class SingleSymbolMatch(WeightFunctionBase):
+    """ Returns a one if the symbols match, a zero otherwise """
     _imutable_fields_ = ["sym"]
 
     def __init__(self, sym, rig):
@@ -27,7 +30,6 @@ class SingleSymbolMatch(WeightFunctionBase):
 
     @extractSym
     def call(self, otherSym):
-        print(chr(self.sym), chr(otherSym))
         if otherSym == self.sym:
             return self.rig.one
         else:
@@ -37,14 +39,13 @@ def createSingleSymbolMatch(sym, rig):
     return SingleSymbolMatch(sym, rig)
 
 class SymbolClassMatch(WeightFunctionBase):
-    #  WARNING: Inverting a characterClass will not always lead
-    #  to the expected results for none boolean rigs
-    # TODO: Should really implement proper checking for this..., test with int rig
+    """ Creates a matcher for a character class: takes a list of single symbol
+        matchers and adds together the call for each one"""
 
     _imutable_fields_ = ["symMatchClass"]
 
     def __init__(self, symMatchClass, rig):
-        """symMatchClass: a list of weight function objects """
+        # symMatchClass is a list of weight function objects
         WeightFunctionBase.__init__(self, rig)
         self.symclass = symMatchClass
         self.rig = rig
@@ -56,12 +57,14 @@ class SymbolClassMatch(WeightFunctionBase):
         return s
 
 class StartPositionMatcher(WeightFunctionBase):
+    """ A matcher that returns the position of the char if
+        it matches in the form (0, n), a zero otherwise """
+
     _imutable_fields_ = ["sym"]
 
     def __init__(self, sym, rig):
         WeightFunctionBase.__init__(self, rig)
         self.sym = sym
-
 
     def call(self, otherSym):
         if otherSym[1] == self.sym:
@@ -73,6 +76,8 @@ def createStartPositionMatcher(sym, rig):
     return StartPositionMatcher(sym, rig)
 
 class StartEndPositionMatcher(WeightFunctionBase):
+        """ A matcher for finding the start and end of a submatch. """
+
         _imutable_fields_ = ["sym"]
 
         def __init__(self, sym, rig):
@@ -80,7 +85,6 @@ class StartEndPositionMatcher(WeightFunctionBase):
             self.sym = sym
 
         def call(self, otherSym):
-#            print(otherSym, self.sym)
             if otherSym[1] == self.sym:
                 return (otherSym[0], otherSym[0])
             else:
@@ -90,6 +94,7 @@ def createStartEndPositionMatcher(sym, rig):
     return StartEndPositionMatcher(sym, rig)
 
 class CaseInsensitiveWrapper(WeightFunctionBase):
+    """ Takes a weight function and makes it case insensitive """
     _imutable_fields_ = ["base"]
 
     def __init__(self, base, rig):
@@ -101,6 +106,8 @@ class CaseInsensitiveWrapper(WeightFunctionBase):
         return self.base.call((0, ord(chr(sym).lower())))
 
 class InvertWrapper(WeightFunctionBase):
+    """ Takes a weight function and inverts it; that is, if a zero is returned
+        originally, return a one; otherwise return a zero """
     _imutable_fields_ = ["base"]
 
     def __init__(self, base, rig):
@@ -114,20 +121,29 @@ class InvertWrapper(WeightFunctionBase):
             return self.rig.zero
 
 class AllButNewLineMatcher(WeightFunctionBase):
+    """ Returns a "match" (as defined by the rig) unless the symbol is a newline"""
+
     def __init__(self, rig):
         WeightFunctionBase.__init__(self, rig)
 
-    @extractSym
     def call(self, sym):
-        if sym == ord("\t"):  # Should this be producing one or (0,n)?
+        if sym[1] == 10:  # ord(\n) == 10
             return self.rig.zero
         else:
-            return self.rig.one
+            return self.rig.autoMatch(sym)
 
 class OneProducer(WeightFunctionBase):
+    """ Always returns a one """
     def __init__(self, rig):
         WeightFunctionBase.__init__(self, rig)
 
-    @extractSym
     def call(self, sym):
-        return self.one
+        return self.rig.one
+
+class ZeroProducer(WeightFunctionBase):
+    """ Always returns a zero """
+    def __init__(self, rig):
+        WeightFunctionBase.__init__(self, rig)
+
+    def call(self, sym):
+        return self.rig.zero

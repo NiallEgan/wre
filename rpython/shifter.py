@@ -1,8 +1,6 @@
 """ Implements the 'shifting' algorithm, presented in
-    http://sebfisch.github.io/haskell-regexp/regexp-play.pdf """
-
-from regexRepr import regexToPost
-
+    http://sebfisch.github.io/haskell-regexp/regexp-play.pdf
+"""
 class Expr(object):
     """ Base class for regex symbols """
 
@@ -157,8 +155,3 @@ def match(r, string):
 
     r.updateFinal()
     return r.final()
-
-
-if __name__ == '__main__':
-    r = post2ExprTree(regexToPost("(a.(b.b)*.a)|a.b.c"))
-    print(match(r, "abc"))

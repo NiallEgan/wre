@@ -11,27 +11,29 @@ class TestFailure(Exception):
 
 if __name__ == '__main__':
     testsPassed = 0
+
     for (i, test) in enumerate(tests):
         print("TEST %d:" % i)
         print(test)
         print("\n")
 
+        m = {"True\n": 1, "False\n": 0}  # Nasty...
         regex = test[0]
         string = test[1]
-        result = subprocess.check_output(['./main-cNoJIT', regex, string])
 
         try:
-            if int(result) !=  test[2]:
+            result = m[subprocess.check_output(["python", "main.py", regex, string, "0", "stringMode"])]
+            if result !=  test[2]:
                 print(test)
                 print(result)
                 print("Failed")
                 raise TestFailure()
             else:
-            #    print(test)
                 print("Passed")
 
             testsPassed += 1
-        except ValueError as e:
+        except KeyError as e:
+            print("Error caught")
             if test[2] == SYNTAX_ERROR:
                 testsPassed += 1
             else:
