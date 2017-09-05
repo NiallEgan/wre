@@ -1,0 +1,5 @@
+Date,Time,Average Time for Test, Test Type
+2017-08-16,16:55:00,0.089674,RPython - JIT
+2017-08-16,16:56:06,0.356480,RPython - No JIT
+2017-08-16,18:24:45,43.827937,Python (uncompiled)
+2017-08-16,18:46:34,0.089181,Python re Module
