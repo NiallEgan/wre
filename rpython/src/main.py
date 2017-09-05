@@ -10,6 +10,12 @@ nModes = 5
 PARTIAL_MATCH, COMPLETE_MATCH, FIND_LEFTMOST_START,\
     FIND_LEFTMOST_RANGE, FIND_ALL = range(0, nModes)
 
+
+def deargument(f, *args, **kwargs):
+    def wrapper():
+        return f(*args, **kwargs)
+    return wrapper
+
 def readFile(filename):  # A simple RPython function to read a file using file pointers
     fp = os.open(filename, os.O_RDONLY, 0777)
     f = ""
@@ -64,6 +70,7 @@ def run(re, s, mode):
     else:
         raise ReSyntaxError("Un recognised mode: %d" % mode)
 
+from timeit import timeit
 def entry_point(argv):
     try:
         try:
@@ -73,7 +80,8 @@ def entry_point(argv):
                 s = readFile(argv[2])
             mode = int(argv[3])
 
-            run(re, s, mode)
+            r = deargument(run, re, s, mode)
+            print(timeit(r, number=1))
         except IndexError:
             print("Not enough arguments: run in the form re file mode")
             return 1
