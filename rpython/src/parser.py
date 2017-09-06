@@ -195,8 +195,10 @@ def generateCharacterClass(classExp, rig, symGeneratingFunction, caseInsensitive
 
     return classWeightFunction
 
+
 def insertConcats(regExp):
     """ Inserts concats and tokenises everythig to ints """
+
     output = []
     insertMode = True
     literalMode = False
@@ -267,7 +269,7 @@ def regexToPost(regExpPreConverted):
                 outputQueue.put(ord("\\"))
                 outputQueue.put(escapes.get(nextToken, nextToken))
 
-        elif token in ops: #doesn't treat like a single unit
+        elif token in ops:  # doesn't treat like a single unit
             while opStack and prec[opStack[-1]] >= prec[token]:
                 outputQueue.put(opStack.pop())
             opStack.append(token)
@@ -281,11 +283,11 @@ def regexToPost(regExpPreConverted):
                     try:
                         if (regExp[-2], regExp[-3], regExp[-4]) == (CONCAT_MARKER, ord("i"), ord(")")):
                             outputQueue.put(CASE_INSENSITIVE)
-                            regExp.pop() # 1
-                            regExp.pop() # ?
-                            regExp.pop() # i
-                            regExp.pop() # )
-                            regExp.pop() # 1
+                            regExp.pop()  # 1
+                            regExp.pop()  # ?
+                            regExp.pop()  # i
+                            regExp.pop()  # )
+                            regExp.pop()  # 1
                         else:
                             opStack.append(token)
                     except IndexError:
@@ -384,6 +386,7 @@ def regexToPost(regExpPreConverted):
 def compileRegex(exp, rig, matchFunction):
     """ Creates a compiled regex tree """
     return post2WExprTree(regexToPost(exp), rig, matchFunction, False)
+
 
 def compilePartial(exp, rig, matchFunction):
     """ Creates a regex tree which will accept partial matches """

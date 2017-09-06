@@ -11,11 +11,6 @@ PARTIAL_MATCH, COMPLETE_MATCH, FIND_LEFTMOST_START,\
     FIND_LEFTMOST_RANGE, FIND_ALL = range(0, nModes)
 
 
-def deargument(f, *args, **kwargs):
-    def wrapper():
-        return f(*args, **kwargs)
-    return wrapper
-
 def readFile(filename):  # A simple RPython function to read a file using file pointers
     fp = os.open(filename, os.O_RDONLY, 0777)
     f = ""
@@ -26,6 +21,7 @@ def readFile(filename):  # A simple RPython function to read a file using file p
         f += read
     os.close(fp)
     return f
+
 
 def run(re, s, mode):
 
@@ -70,7 +66,7 @@ def run(re, s, mode):
     else:
         raise ReSyntaxError("Un recognised mode: %d" % mode)
 
-from timeit import timeit
+
 def entry_point(argv):
     try:
         try:
@@ -79,9 +75,9 @@ def entry_point(argv):
             if len(argv) == 4:
                 s = readFile(argv[2])
             mode = int(argv[3])
+            print(re)
+            run(re, s, mode)
 
-            r = deargument(run, re, s, mode)
-            print(timeit(r, number=1))
         except IndexError:
             print("Not enough arguments: run in the form re file mode")
             return 1
@@ -94,12 +90,15 @@ def entry_point(argv):
 
     return 0
 
+
 def target(*args):
     return entry_point, None
+
 
 def jitpolicy(driver):
     from rpython.jit.codewriter.policy import JitPolicy
     return JitPolicy()
+
 
 def mainloop(r, string, rig, mode):
     """ Returns if string matches the regex r """
@@ -111,7 +110,7 @@ def mainloop(r, string, rig, mode):
     # NFA
 
     i = 0
-    ans = [] # TODO: Add variables to red and green list
+    ans = []
     prevAns = rig.zero
 
     while i < len(string) - 1:  # Main program loop
@@ -122,13 +121,13 @@ def mainloop(r, string, rig, mode):
         r.updateFinal()  # Explicitly call update here, cache the values
     #    print((i+1, "%s" % chr(string[i+1][1]), r.final()))
 
-        if mode ==  FIND_ALL:
+        if mode == FIND_ALL:
             r.updateFinal()
             # Maybe be faster to use all?
             if r.final() == prevAns and prevAns[0] >= 0: # I.e. prevAns != zero or one
                 # The longest leftmost match has been found. Reset FSM and start
                 # from the character at the end of the match
-        #        print(i+1)
+
                 ans.append(r.final())
                 r.reset()
                 r.shift(rig.one, string[i])
@@ -154,7 +153,7 @@ def mainloop(r, string, rig, mode):
     # Clean up main loop -
     # Sort out {} bug -
     # Add anchor support -
-    # Test
+    # Test ~
     # Benchmark - optimise?
     # Clean up, document
 
