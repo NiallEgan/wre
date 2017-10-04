@@ -1,1 +1,2 @@
-An experimental Python library for using weighted regular expressions with a JIT compiler.
+An experimental Python library for using weighted regular expressions with a JIT compiler. 
+It performs extremely well (faster than re2) with very structured searches, while offering the same asymptotic guarantees. With more complex data, however, due to the nature of the JIT compiler, it tends to not perform as well.
